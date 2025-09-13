@@ -13,7 +13,7 @@ import java.util.List;
 
 public class ModConfig {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
-    private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("scs-config.json");
+    private static final Path CONFIG_PATH = FabricLoader.getInstance().getConfigDir().resolve("scs-enhanced-config.json");
 
     private static ModConfig INSTANCE = new ModConfig();
 
@@ -21,7 +21,7 @@ public class ModConfig {
     public boolean enableHud = true;
     public int hudX = -320;
     public int hudY = 10;
-    public int maxMessages = 50;
+    public int maxMessages = 100;
     public int showLast = 15;
 
     // Цвета (в формате 0xRRGGBB)
@@ -41,6 +41,7 @@ public class ModConfig {
     // Логирование
     public boolean enableLogging = true;
     public boolean logAllChat = false;
+    public boolean debugMode = false;
 
     // Фильтры нарушений
     public List<String> violationKeywords = Arrays.asList(
@@ -51,14 +52,21 @@ public class ModConfig {
             "tried to interact",
             "invalid movement",
             "speed hacks",
-            "fly hacks"
+            "fly hacks",
+            "reach entity outside max reach distance"
     );
 
-    // Команды для кнопок
-    public String freezeCommand = "/freezing";
-    public String spectateCommand = "/matrix spectate";
-    public String activityCommand = "/playeractivity";
-    public String historyCommand = "/freezinghistory";
+    // Команды для кнопок (настраиваемые)
+    public String freezeCommand = "/freezing %player%";
+    public String spectateCommand = "/matrix spectate %player%";
+    public String activityCommand = "/playeractivity %player%";
+    public String historyCommand = "/freezinghistory %player%";
+
+    // Дополнительные настройки
+    public boolean showTimestamps = true;
+    public boolean showPlayerCount = true;
+    public boolean highlightCritical = true;
+    public int menuTransparency = 80; // 0-100%
 
     public static ModConfig getInstance() {
         return INSTANCE;
@@ -69,13 +77,19 @@ public class ModConfig {
             if (Files.exists(CONFIG_PATH)) {
                 String json = Files.readString(CONFIG_PATH);
                 INSTANCE = GSON.fromJson(json, ModConfig.class);
+
+                // Валидация загруженных данных
+                validate();
+
                 ScS.LOGGER.info("✅ Конфигурация загружена из {}", CONFIG_PATH);
             } else {
                 save(); // Создаем дефолтную конфигурацию
                 ScS.LOGGER.info("📝 Создана новая конфигурация в {}", CONFIG_PATH);
             }
-        } catch (IOException e) {
+        } catch (Exception e) {
             ScS.LOGGER.error("❌ Ошибка загрузки конфигурации: {}", e.getMessage());
+            INSTANCE = new ModConfig(); // Возвращаемся к дефолту при ошибке
+            save(); // Сохраняем исправленную версию
         }
     }
 
@@ -88,6 +102,44 @@ public class ModConfig {
         } catch (IOException e) {
             ScS.LOGGER.error("❌ Ошибка сохранения конфигурации: {}", e.getMessage());
         }
+    }
+
+    /**
+     * Валидация настроек после загрузки
+     */
+    private static void validate() {
+        // Ограничиваем значения в разумных пределах
+        INSTANCE.maxMessages = Math.max(10, Math.min(INSTANCE.maxMessages, 500));
+        INSTANCE.showLast = Math.max(5, Math.min(INSTANCE.showLast, 50));
+        INSTANCE.menuTransparency = Math.max(0, Math.min(INSTANCE.menuTransparency, 100));
+
+        // Проверяем существование команд
+        if (INSTANCE.violationKeywords == null || INSTANCE.violationKeywords.isEmpty()) {
+            INSTANCE.violationKeywords = Arrays.asList(
+                    "tried to move abnormally",
+                    "might be using combat hacks",
+                    "suspected use of automatic robots"
+            );
+        }
+
+        // Исправляем команды если нужно
+        if (INSTANCE.freezeCommand == null || !INSTANCE.freezeCommand.contains("%player%")) {
+            INSTANCE.freezeCommand = "/freezing %player%";
+        }
+        if (INSTANCE.spectateCommand == null || !INSTANCE.spectateCommand.contains("%player%")) {
+            INSTANCE.spectateCommand = "/matrix spectate %player%";
+        }
+        if (INSTANCE.activityCommand == null || !INSTANCE.activityCommand.contains("%player%")) {
+            INSTANCE.activityCommand = "/playeractivity %player%";
+        }
+        if (INSTANCE.historyCommand == null || !INSTANCE.historyCommand.contains("%player%")) {
+            INSTANCE.historyCommand = "/freezinghistory %player%";
+        }
+    }
+
+    // Утилиты для работы с командами
+    public String getFormattedCommand(String command, String playerName) {
+        return command.replace("%player%", playerName);
     }
 
     // Утилиты для цветов
@@ -103,5 +155,22 @@ public class ModConfig {
 
     public static String colorToHex(int color) {
         return String.format("#%06X", color & 0xFFFFFF);
+    }
+
+    // Методы для обновления настроек в рантайме
+    public void toggleHud() {
+        this.enableHud = !this.enableHud;
+        save();
+    }
+
+    public void toggleSoundAlerts() {
+        this.soundAlerts = !this.soundAlerts;
+        save();
+    }
+
+    public void toggleDebugMode() {
+        this.debugMode = !this.debugMode;
+        save();
+        ScS.LOGGER.info("Режим отладки: {}", this.debugMode ? "включен" : "выключен");
     }
 }

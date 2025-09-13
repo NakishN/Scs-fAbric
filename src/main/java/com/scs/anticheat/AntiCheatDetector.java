@@ -1,6 +1,6 @@
 package com.scs.anticheat;
 
-import com.scs.Scs;
+import com.scs.ScS;
 import net.fabricmc.fabric.api.client.message.v1.ClientReceiveMessageEvents;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.text.ClickEvent;
@@ -15,115 +15,114 @@ import java.util.regex.Pattern;
 
 public class AntiCheatDetector {
     private static final List<AntiCheatDetection> detections = new ArrayList<>();
+    private static final Pattern ANTICHEAT_PATTERN = Pattern.compile(
+            ".*\\[Анти-Чит\\]\\s+(\\w+)\\s+(.*?)(?:\\s*\\(([^)]+)\\))?(?:\\s*#(\\d+))?.*"
+    );
 
     public static void init() {
-        Scs.LOGGER.info("=== ИНИЦИАЛИЗАЦИЯ AntiCheatDetector ===");
+        ScS.LOGGER.info("=== ИНИЦИАЛИЗАЦИЯ AntiCheatDetector ===");
 
-        // Регистрируем обработчик сообщений чата
-        ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
-            if (!overlay) { // Игнорируем overlay сообщения
-                handleChatMessage(message);
-            }
-        });
-
-        Scs.LOGGER.info("✅ AntiCheatDetector зарегистрирован!");
+        try {
+            // Регистрируем обработчик сообщений чата
+            ClientReceiveMessageEvents.GAME.register((message, overlay) -> {
+                if (!overlay) { // Игнорируем overlay сообщения
+                    handleChatMessage(message);
+                }
+            });
+            ScS.LOGGER.info("✅ AntiCheatDetector зарегистрирован!");
+        } catch (Exception e) {
+            ScS.LOGGER.error("❌ Ошибка регистрации AntiCheatDetector: {}", e.getMessage());
+            e.printStackTrace();
+        }
     }
 
     private static void handleChatMessage(Text message) {
-        String messageText = message.getString();
+        try {
+            String messageText = message.getString();
 
-        // МАКСИМАЛЬНОЕ ЛОГИРОВАНИЕ
-        Scs.LOGGER.info("=== ПОЛУЧЕНО СООБЩЕНИЕ ЧАТА ===");
-        Scs.LOGGER.info("Текст: '{}'", messageText);
-        Scs.LOGGER.info("Содержит 'Анти-Чит': {}", messageText.contains("Анти-Чит"));
+            // Проверяем сообщения античита
+            if (messageText.contains("Анти-Чит") || messageText.contains("[Анти-Чит]")) {
+                ScS.LOGGER.info("🚨 НАЙДЕНО СООБЩЕНИЕ АНТИЧИТА!");
 
-        // Проверяем сообщения античита
-        if (messageText.contains("Анти-Чит") || messageText.contains("[Анти-Чит]")) {
-            Scs.LOGGER.info("🚨 НАЙДЕНО СООБЩЕНИЕ АНТИЧИТА!");
+                String playerName = parsePlayerName(messageText);
+                ScS.LOGGER.info("Имя игрока: '{}'", playerName);
 
-            String playerName = parsePlayerName(messageText);
-            Scs.LOGGER.info("Имя игрока: '{}'", playerName);
+                if (playerName != null && !playerName.isEmpty()) {
+                    ViolationType type = parseViolationType(messageText);
+                    int count = parseCount(messageText);
 
-            if (playerName != null && !playerName.isEmpty()) {
-                ViolationType type = parseViolationType(messageText);
-                int count = parseCount(messageText);
+                    ScS.LOGGER.info("Тип: {}, Счет: {}", type, count);
 
-                Scs.LOGGER.info("Тип: {}, Счет: {}", type, count);
+                    // Создаем кнопки
+                    createButtons(playerName, type);
 
-                // Создаем кнопки
-                createButtons(playerName, type);
-
-                // Сохраняем
-                AntiCheatDetection detection = new AntiCheatDetection(playerName, messageText, type, count);
-                synchronized (detections) {
-                    detections.add(detection);
-                    if (detections.size() > 100) {
-                        detections.remove(0);
+                    // Сохраняем
+                    AntiCheatDetection detection = new AntiCheatDetection(playerName, messageText, type, count);
+                    synchronized (detections) {
+                        detections.add(detection);
+                        if (detections.size() > 100) {
+                            detections.remove(0);
+                        }
                     }
-                }
 
-                Scs.LOGGER.info("✅ Обработано: {} - {}", playerName, type);
-            } else {
-                Scs.LOGGER.error("❌ НЕ УДАЛОСЬ ИЗВЛЕЧЬ ИМЯ ИГРОКА");
-                Scs.LOGGER.error("Сообщение: '{}'", messageText);
+                    ScS.LOGGER.info("✅ Обработано: {} - {}", playerName, type);
+                } else {
+                    ScS.LOGGER.warn("❌ НЕ УДАЛОСЬ ИЗВЛЕЧЬ ИМЯ ИГРОКА");
+                    ScS.LOGGER.warn("Сообщение: '{}'", messageText);
+                }
             }
+        } catch (Exception e) {
+            ScS.LOGGER.error("❌ Ошибка обработки сообщения чата: {}", e.getMessage());
         }
     }
 
     private static String parsePlayerName(String message) {
-        Scs.LOGGER.info("Парсинг имени из: '{}'", message);
-
         try {
-            // Убираем временные метки
-            String cleaned = message.replaceAll("\\[\\d{2}:\\d{2}:\\d{2}\\]", "")
+            // Убираем временные метки и системные префиксы
+            String cleaned = message.replaceAll("\\[\\d{2}[а-я]{3}\\.\\d{4}\\s+\\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\]", "")
+                    .replaceAll("\\[Render thread/INFO\\]", "")
+                    .replaceAll("\\[net\\.minecraft\\.client\\.gui\\.components\\.ChatComponent/\\]:", "")
                     .replaceAll("\\[System\\]", "")
                     .replaceAll("\\[CHAT\\]", "")
                     .trim();
 
-            Scs.LOGGER.info("Очищено: '{}'", cleaned);
+            // Используем regex для точного извлечения
+            Matcher matcher = ANTICHEAT_PATTERN.matcher(cleaned);
+            if (matcher.find()) {
+                String playerName = matcher.group(1);
+                if (playerName != null && playerName.matches("[A-Za-z0-9_]{3,16}")) {
+                    return playerName;
+                }
+            }
 
+            // Альтернативный поиск по словам
             String[] words = cleaned.split("\\s+");
-            Scs.LOGGER.info("Слова: {}", java.util.Arrays.toString(words));
-
-            // Ищем после [Анти-Чит]
             for (int i = 0; i < words.length; i++) {
                 if (words[i].contains("Анти-Чит") && i + 1 < words.length) {
                     String candidate = words[i + 1];
                     if (candidate.matches("[A-Za-z0-9_]{3,16}")) {
-                        Scs.LOGGER.info("✅ Найден ник: '{}'", candidate);
                         return candidate;
                     }
                 }
             }
-
-            // Альтернативный поиск
-            for (String word : words) {
-                if (word.matches("[A-Za-z0-9_]{3,16}") &&
-                        !word.equals("tried") &&
-                        !word.equals("move") &&
-                        !word.contains("[") &&
-                        !word.contains("]")) {
-                    Scs.LOGGER.info("🎯 Альтернативный ник: '{}'", word);
-                    return word;
-                }
-            }
-
         } catch (Exception e) {
-            Scs.LOGGER.error("Ошибка парсинга: {}", e.getMessage());
+            ScS.LOGGER.error("Ошибка парсинга имени игрока: {}", e.getMessage());
         }
 
         return null;
     }
 
     private static ViolationType parseViolationType(String message) {
-        if (message.contains("Move") || message.contains("move")) return ViolationType.MOVE;
-        if (message.contains("Click") || message.contains("click")) return ViolationType.CLICK;
-        if (message.contains("FastPlace") || message.contains("FastBreak")) return ViolationType.FASTPLACE;
-        if (message.contains("HitBox") || message.contains("hitbox")) return ViolationType.HITBOX;
-        if (message.contains("Velocity") || message.contains("velocity")) return ViolationType.VELOCITY;
-        if (message.contains("KillAura") || message.contains("killaura")) return ViolationType.KILLAURA;
-        if (message.contains("Delay") || message.contains("delay")) return ViolationType.DELAY;
-        if (message.contains("AutoBot") || message.contains("autobot") || message.contains("robots")) return ViolationType.AUTOBOT;
+        String lowerMessage = message.toLowerCase();
+
+        if (lowerMessage.contains("move") || lowerMessage.contains("abnormally")) return ViolationType.MOVE;
+        if (lowerMessage.contains("click")) return ViolationType.CLICK;
+        if (lowerMessage.contains("fastplace") || lowerMessage.contains("fastbreak")) return ViolationType.FASTPLACE;
+        if (lowerMessage.contains("hitbox") || lowerMessage.contains("reach")) return ViolationType.HITBOX;
+        if (lowerMessage.contains("velocity")) return ViolationType.VELOCITY;
+        if (lowerMessage.contains("killaura") || lowerMessage.contains("combat hacks")) return ViolationType.KILLAURA;
+        if (lowerMessage.contains("delay")) return ViolationType.DELAY;
+        if (lowerMessage.contains("autobot") || lowerMessage.contains("automatic robots")) return ViolationType.AUTOBOT;
 
         return ViolationType.MOVE;
     }
@@ -138,68 +137,59 @@ public class AntiCheatDetector {
                 }
             }
         } catch (Exception e) {
-            Scs.LOGGER.warn("Ошибка парсинга счетчика: {}", e.getMessage());
+            ScS.LOGGER.warn("Ошибка парсинга счетчика: {}", e.getMessage());
         }
         return 1;
     }
 
     private static void createButtons(String playerName, ViolationType type) {
-        Scs.LOGGER.info("🛠️ СОЗДАЕМ КНОПКИ ДЛЯ: '{}'", playerName);
-
-        MinecraftClient client = MinecraftClient.getInstance();
-        if (client.player == null) {
-            Scs.LOGGER.error("❌ Игрок не найден");
-            return;
-        }
-
         try {
-            // Сначала тестовое сообщение
-            client.player.sendMessage(
-                    Text.literal("§c§lTEST: Обнаружен " + playerName + " - " + type.name()),
-                    false
-            );
-            Scs.LOGGER.info("✅ Тестовое сообщение отправлено");
+            MinecraftClient client = MinecraftClient.getInstance();
+            if (client.player == null) {
+                ScS.LOGGER.warn("❌ Игрок не найден, пропускаем создание кнопок");
+                return;
+            }
 
-            // Затем кнопки
-            MutableText message = Text.literal("§8§l▬▬▬ SCS ANTICHEAT ▬▬▬");
-            message.append(Text.literal("\n§c§lИгрок: " + playerName));
-            message.append(Text.literal("\n§7Нарушение: §e" + type.name()));
+            // Создаем красивое сообщение с кнопками
+            MutableText message = Text.literal("§8§l▬▬▬ §c§lSCS ANTICHEAT §8§l▬▬▬");
+            message.append(Text.literal("\n§7Игрок: §f" + playerName));
+            message.append(Text.literal("\n§7Нарушение: §e" + type.getDisplayName()));
 
-            // Кнопки
-            MutableText buttons = Text.literal("\n");
+            // Кнопки действий
+            MutableText buttons = Text.literal("\n§8§l▬ §fДействия §8§l▬\n");
 
             buttons.append(Text.literal("§a[ЗАМОРОЗИТЬ]")
                     .styled(style -> style
                             .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/freezing " + playerName))
                             .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                    Text.literal("Заморозить для проверки")))));
+                                    Text.literal("§aЗаморозить игрока для проверки")))));
 
             buttons.append(Text.literal(" §b[СПЕК]")
                     .styled(style -> style
                             .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/matrix spectate " + playerName))
                             .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                    Text.literal("Следить за игроком")))));
+                                    Text.literal("§bСледить за игроком")))));
 
             buttons.append(Text.literal(" §e[АКТИВНОСТЬ]")
                     .styled(style -> style
                             .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/playeractivity " + playerName))
                             .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                    Text.literal("Проверить активность")))));
+                                    Text.literal("§eПроверить активность игрока")))));
 
             buttons.append(Text.literal(" §6[ИСТОРИЯ]")
                     .styled(style -> style
                             .withClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/freezinghistory " + playerName))
                             .withHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT,
-                                    Text.literal("История проверок")))));
+                                    Text.literal("§6История проверок игрока")))));
 
             message.append(buttons);
             message.append(Text.literal("\n§8§l▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬"));
 
             client.player.sendMessage(message, false);
-            Scs.LOGGER.info("✅ КНОПКИ ОТПРАВЛЕНЫ!");
+            ScS.LOGGER.info("✅ КНОПКИ ОТПРАВЛЕНЫ для игрока: {}", playerName);
 
         } catch (Exception e) {
-            Scs.LOGGER.error("❌ ОШИБКА СОЗДАНИЯ КНОПОК: {}", e.getMessage());
+            ScS.LOGGER.error("❌ ОШИБКА СОЗДАНИЯ КНОПОК: {}", e.getMessage());
             e.printStackTrace();
         }
     }
@@ -214,6 +204,21 @@ public class AntiCheatDetector {
     public static void clearDetections() {
         synchronized (detections) {
             detections.clear();
+            ScS.LOGGER.info("🗑️ Список нарушений очищен");
+        }
+    }
+
+    public static int getTotalDetections() {
+        synchronized (detections) {
+            return detections.size();
+        }
+    }
+
+    public static long getCriticalDetections() {
+        synchronized (detections) {
+            return detections.stream()
+                    .filter(d -> d.getType().isCritical())
+                    .count();
         }
     }
 }
