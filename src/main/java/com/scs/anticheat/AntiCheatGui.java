@@ -74,7 +74,7 @@ public class AntiCheatGui {
         context.fill(startX - 5, startY - 5, startX + 295, Math.min(startY + detections.size() * 12 + 25, maxHeight), 0x80000000);
 
         // Заголовок
-        context.drawText(CLIENT.textRenderer, "§lСписок нарушений", startX, startY, 0xFFFFFF, true);
+        context.drawText(CLIENT.textRenderer, "Список нарушений", startX, startY, 0xFFFFFF, true);
 
         int y = startY + 15;
         int maxEntries = (maxHeight - startY - 30) / 12;
@@ -91,14 +91,14 @@ public class AntiCheatGui {
             String timeStr = TIME_FORMAT.format(new Date(detection.getTimestamp()));
             int color = detection.getType().getColor();
 
-            String text = String.format("§7[%s] §r%s §7(%s)",
+            String text = String.format("[%s] %s (%s)",
                     timeStr,
                     detection.getPlayerName(),
                     detection.getType().name()
             );
 
             if (detection.getCount() > 1) {
-                text += " §c#" + detection.getCount();
+                text += " #" + detection.getCount();
             }
 
             context.drawText(CLIENT.textRenderer, text, startX, y, color, false);
@@ -106,7 +106,7 @@ public class AntiCheatGui {
         }
 
         // Показываем информацию о горячих клавишах внизу
-        String hotkeys = "§7F8 - скрыть/показать | F9 - меню";
+        String hotkeys = "F8 - скрыть/показать | F9 - меню";
         context.drawText(CLIENT.textRenderer, hotkeys, startX,
                 Math.min(y + 5, maxHeight - 10), 0x888888, false);
     }
@@ -133,7 +133,7 @@ public class AntiCheatGui {
         context.fill(menuX + menuWidth - 2, menuY, menuX + menuWidth, menuY + menuHeight, 0xFFFFFFFF); // Право
 
         // Заголовок
-        context.drawCenteredTextWithShadow(CLIENT.textRenderer, "§lМеню античита", menuX + menuWidth / 2, menuY + 10, 0xFFFFFF);
+        context.drawCenteredTextWithShadow(CLIENT.textRenderer, "Меню античита", menuX + menuWidth / 2, menuY + 10, 0xFFFFFF);
 
         // Статистика
         List<AntiCheatDetection> detections = AntiCheatDetector.getDetections();
@@ -159,15 +159,15 @@ public class AntiCheatGui {
 
         // Инструкции
         yPos = menuY + menuHeight - 80;
-        context.drawText(CLIENT.textRenderer, "§7Горячие клавиши:", menuX + 10, yPos, 0xAAAAAA, false);
+        context.drawText(CLIENT.textRenderer, "Горячие клавиши:", menuX + 10, yPos, 0xAAAAAA, false);
         yPos += 15;
 
-        context.drawText(CLIENT.textRenderer, "§7F8 - Показать/скрыть список", menuX + 10, yPos, 0xAAAAAA, false);
+        context.drawText(CLIENT.textRenderer, "F8 - Показать/скрыть список", menuX + 10, yPos, 0xAAAAAA, false);
         yPos += 12;
 
-        context.drawText(CLIENT.textRenderer, "§7F9 - Открыть/закрыть меню", menuX + 10, yPos, 0xAAAAAA, false);
+        context.drawText(CLIENT.textRenderer, "F9 - Открыть/закрыть меню", menuX + 10, yPos, 0xAAAAAA, false);
         yPos += 12;
 
-        context.drawText(CLIENT.textRenderer, "§7ESC - Закрыть меню", menuX + 10, yPos, 0xAAAAAA, false);
+        context.drawText(CLIENT.textRenderer, "ESC - Закрыть меню", menuX + 10, yPos, 0xAAAAAA, false);
     }
 }

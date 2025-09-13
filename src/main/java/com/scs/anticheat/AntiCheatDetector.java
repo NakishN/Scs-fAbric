@@ -10,8 +10,8 @@ import net.minecraft.text.Text;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import static com.sun.org.apache.xalan.internal.xsltc.compiler.util.Type.Text;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 public class AntiCheatDetector {
     private static final List<AntiCheatDetection> detections = new ArrayList<>();

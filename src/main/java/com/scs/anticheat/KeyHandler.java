@@ -10,6 +10,7 @@ import org.lwjgl.glfw.GLFW;
 public class KeyHandler {
     private static KeyBinding toggleListKey;
     private static KeyBinding toggleMenuKey;
+    private static KeyBinding clearEntriesKey;
 
     public static void init() {
         Scs.LOGGER.info("=== ИНИЦИАЛИЗАЦИЯ KeyHandler ===");
@@ -29,6 +30,13 @@ public class KeyHandler {
                 "category.scs.general"
         ));
 
+        clearEntriesKey = KeyBindingHelper.registerKeyBinding(new KeyBinding(
+                "key.scs.clear_entries",
+                InputUtil.Type.KEYBOARD,
+                GLFW.GLFW_KEY_F10,
+                "category.scs.general"
+        ));
+
         // Регистрируем обработчик тиков клиента
         ClientTickEvents.END_CLIENT_TICK.register(client -> {
             // Обработка F8 - показать/скрыть список
@@ -39,6 +47,11 @@ public class KeyHandler {
             // Обработка F9 - открыть/закрыть меню
             while (toggleMenuKey.wasPressed()) {
                 AntiCheatGui.toggleMenu();
+            }
+
+            // Обработка F10 - очистить записи
+            while (clearEntriesKey.wasPressed()) {
+                AntiCheatDetector.clearDetections();
             }
         });
 
