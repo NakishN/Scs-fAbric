@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.4-SNAPSHOT'
+    id 'fabric-loom' version '1.3-SNAPSHOT'
     id 'maven-publish'
 }
 
@@ -8,6 +8,14 @@ group = project.maven_group
 
 base {
     archivesName = project.archives_base_name
+}
+
+repositories {
+    maven {
+        name = 'Fabric'
+        url = 'https://maven.fabricmc.net/'
+    }
+    mavenCentral()
 }
 
 loom {
@@ -19,14 +27,6 @@ loom {
             sourceSet sourceSets.client
         }
     }
-}
-
-repositories {
-    maven {
-        name = 'Fabric'
-        url = 'https://maven.fabricmc.net/'
-    }
-    mavenCentral()
 }
 
 dependencies {
@@ -53,7 +53,7 @@ def targetJavaVersion = 17
 tasks.withType(JavaCompile).configureEach {
     it.options.encoding = "UTF-8"
     if (targetJavaVersion >= 10 || JavaVersion.current().isJava10Compatible()) {
-        it.options.release.set(targetJavaVersion)
+        it.options.release = targetJavaVersion
     }
 }
 
@@ -63,19 +63,36 @@ java {
         toolchain.languageVersion = JavaLanguageVersion.of(targetJavaVersion)
     }
     withSourcesJar()
+    sourceCompatibility = JavaVersion.VERSION_17
+    targetCompatibility = JavaVersion.VERSION_17
 }
 
 jar {
     from("LICENSE.txt") {
-        rename { "${it}_${project.archivesBaseName}" }
+        rename { "${it}_${base.archivesName.get()}" }
+    }
+
+    manifest {
+        attributes([
+                "Specification-Title": "SCS Enhanced",
+                "Specification-Vendor": "nakish_",
+                "Specification-Version": project.version,
+                "Implementation-Title": "SCS Enhanced",
+                "Implementation-Version": project.version,
+                "Implementation-Vendor": "nakish_"
+        ])
     }
 }
 
 publishing {
     publications {
         create("mavenJava", MavenPublication) {
-            artifactId = project.archives_base_name
+            artifactId = base.archivesName.get()
             from components.java
         }
+    }
+
+    repositories {
+        // Добавьте свой репозиторий здесь если нужно
     }
 }
