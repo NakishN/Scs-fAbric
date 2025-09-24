@@ -3,7 +3,7 @@
   "id": "scs-enhanced",
   "version": "${version}",
   "name": "ScS Enhanced",
-  "description": "Мод для администраторов SkyBars - мониторинг античита",
+  "description": "Мод для администраторов SkyBars - мониторинг античита (стабильная версия)",
   "authors": ["nakish_"],
   "contact": {
     "homepage": "https://skybars.net",
@@ -26,23 +26,10 @@
   "depends": {
     "fabricloader": ">=${loader_version}",
     "fabric-api": "*",
-    "fabric-key-binding-api-v1": "*",
-    "fabric-lifecycle-events-v1": "*",
-    "fabric-rendering-v1": "*",
     "minecraft": "${minecraft_version}",
     "java": ">=17"
   },
   "suggests": {
     "modmenu": "*"
-  },
-  "custom": {
-    "modmenu": {
-      "badges": ["client"],
-      "parent": {
-        "id": "fabric-api",
-        "name": "Fabric API",
-        "badges": ["library"]
-      }
-    }
   }
 }
